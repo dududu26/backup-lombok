@@ -1,0 +1,160 @@
+[
+  {
+    "id": "d2509821-31b8-41ef-8444-e8729b46c214",
+    "username": "Boba138",
+    "status": "Boba138",
+    "createdAt": "2026-03-18T21:02:19.897Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://boba138my.homes/",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "797618e7-b568-47bc-90cc-4254ef0e3632",
+    "username": "SPONSOR",
+    "status": "",
+    "createdAt": "2026-03-18T21:42:59.602Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://vt.tiktok.com/ZSu443cLr/",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "995e7ff7-fc2e-4943-a006-20a7f9600830",
+    "username": "KARTUN",
+    "status": "Tes",
+    "createdAt": "2026-03-19T06:45:58.043Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://youtube.com/shorts/B24WT4Jolkw?si=L5tBOH22yDNIR6MH",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "4703beec-c1d9-4890-9b0b-88ce543cd601",
+    "username": "Warga Lombok",
+    "status": "tes",
+    "createdAt": "2026-03-19T06:48:26.538Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": null,
+    "isAds": false,
+    "isLive": false,
+    "likesCount": 6,
+    "reactions": {
+      "😂": 1,
+      "🔥": 8,
+      "👍": 27,
+      "😍": 5
+    },
+    "comments": []
+  },
+  {
+    "id": "f8942891-fffa-4318-a8a4-778c7285d7a3",
+    "username": "SPONSOR",
+    "status": "",
+    "createdAt": "2026-03-19T07:45:47.839Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://www.facebook.com/100070961868058/posts/863501976025190/?mibextid=rS40aB7S9Ucbxw6v",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "91b48e5f-5baf-4fac-b317-2d26f86eeb24",
+    "username": "shopee",
+    "status": "shopee",
+    "createdAt": "2026-03-19T07:47:23.967Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "SALE WALLPAPER HARGA AMBYAR:https://id.shp.ee/3JT3E2Et",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "2e8ad256-ed6f-45ed-9ec5-66a94daa1224",
+    "username": "SPONSOR",
+    "status": "",
+    "createdAt": "2026-03-19T07:48:22.657Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://www.youtube.com/live/8QWZG2D7v_Y?si=Hv8WgXkIaDQLmmIa",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "75c4ec82-34ef-40a7-b29e-948d8bf5cd05",
+    "username": "Warga Lombok",
+    "status": "",
+    "createdAt": "2026-03-19T08:22:54.534Z",
+    "mediaUrl": "/uploads/1773908570815-VID-20260210-WA0007.mp4",
+    "mediaType": "video",
+    "linkUrl": null,
+    "isAds": false,
+    "isLive": false,
+    "likesCount": 6,
+    "reactions": {
+      "😍": 10,
+      "👍": 4,
+      "😂": 2
+    },
+    "comments": [
+      {
+        "username": "Warga Lombok",
+        "text": "tes",
+        "createdAt": "2026-03-19T08:23:19.392Z"
+      }
+    ]
+  },
+  {
+    "id": "990f3949-c2cb-4e5a-9128-b17c47e314cb",
+    "username": "SPONSOR",
+    "status": "",
+    "createdAt": "2026-03-19T09:46:54.208Z",
+    "mediaUrl": null,
+    "mediaType": null,
+    "linkUrl": "https://s.shopee.co.id/1qXQ5bwJ3Q",
+    "isAds": true,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {},
+    "comments": []
+  },
+  {
+    "id": "d278fb29-e65c-45d0-a2fe-ee60a8349bf3",
+    "username": "Warga Lombok",
+    "status": "",
+    "createdAt": "2026-03-19T10:19:30.547Z",
+    "mediaUrl": "/uploads/1773915568959-VID_20260319_181925.mp4",
+    "mediaType": "video",
+    "linkUrl": null,
+    "isAds": false,
+    "isLive": false,
+    "likesCount": 0,
+    "reactions": {
+      "😍": 1,
+      "👍": 6
+    },
+    "comments": []
+  }
+]

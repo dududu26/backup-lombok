@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Live Preview Ads</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #e91e63;
+            --dark: #121212;
+            --card: #1e1e1e;
+            --text: #ffffff;
+            --danger: #ff5252;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        .ads-form { 
+            background: var(--card); border: 2px solid var(--primary); padding: 20px; 
+            border-radius: 12px; margin-bottom: 30px; 
+        }
+        .ads-form input { 
+            width: 100%; padding: 12px; margin: 8px 0; background: #000; 
+            color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box;
+        }
+
+        /* Live Preview Area */
+        .live-preview-container {
+            margin: 15px 0;
+            padding: 10px;
+            background: #000;
+            border-radius: 8px;
+            border: 1px dashed var(--primary);
+            display: none; /* Sembunyi jika link kosong */
+        }
+        .live-preview-container h4 { margin: 0 0 10px 0; font-size: 12px; color: var(--primary); }
+        .preview-iframe { width: 100%; height: 300px; border: none; border-radius: 4px; background: #fff; }
+
+        .btn-post { 
+            background: var(--primary); color: white; border: none; padding: 12px 25px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;
+        }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .post-card { 
+            background: var(--card); border-radius: 12px; overflow: hidden; 
+            display: flex; flex-direction: column; border: 1px solid #333; 
+        }
+        .media-preview { width: 100%; height: 200px; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .media-preview img, .media-preview video, .media-preview iframe { width: 100%; height: 100%; object-fit: contain; border: none; }
+        
+        .content { padding: 15px; flex-grow: 1; }
+        .user { font-weight: bold; color: var(--primary); margin-bottom: 5px; display: block; }
+        .badge { background: var(--primary); font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; }
+        
+        .btn-delete { 
+            background: var(--danger); border: none; color: white; padding: 10px; 
+            width: 100%; cursor: pointer; font-weight: bold;
+        }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Admin Dashboard</h1>
+        <div id="stats">Total: 0 Post</div>
+    </header>
+
+    <div class="ads-form">
+        <h3>📢 Buat Iklan Baru</h3>
+        <input type="text" id="ads-username" placeholder="Nama Pengiklan (Contoh: SPONSOR)">
+        <input type="text" id="ads-status" placeholder="Deskripsi/Caption Iklan">
+        
+        <input type="text" id="ads-link" placeholder="Paste Link URL di sini untuk Pratinjau..." oninput="updatePreview(this.value)">
+        
+        <div id="livePreviewBox" class="live-preview-container">
+            <h4>INSTANT PREVIEW (Tampilan sebelum diposting):</h4>
+            <iframe id="previewIframe" class="preview-iframe"></iframe>
+            <p id="previewUrlDisplay" style="font-size: 10px; color: #888; margin-top: 5px;"></p>
+        </div>
+
+        <button class="btn-post" onclick="postIklan()">PUBLIKASIKAN IKLAN SEKARANG</button>
+    </div>
+
+    <hr style="border: 1px solid #333; margin-bottom: 30px;">
+
+    <h3>🔍 Moderasi Konten Terpublikasi</h3>
+    <div id="admin-feed" class="grid"></div>
+</div>
+
+<script>
+    const socket = io();
+    const adminFeed = document.getElementById('admin-feed');
+    const livePreviewBox = document.getElementById('livePreviewBox');
+    const previewIframe = document.getElementById('previewIframe');
+    const previewUrlDisplay = document.getElementById('previewUrlDisplay');
+
+    // FUNGSI PRATINJAU LANGSUNG
+    function updatePreview(url) {
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            livePreviewBox.style.display = 'block';
+            previewIframe.src = url;
+            previewUrlDisplay.innerText = "Target URL: " + url;
+        } else {
+            livePreviewBox.style.display = 'none';
+            previewIframe.src = "";
+        }
+    }
+
+    async function loadPosts() {
+        const res = await fetch('/api/posts');
+        const posts = await res.json();
+        renderPosts(posts);
+    }
+
+    function renderPosts(posts) {
+        document.getElementById('stats').innerText = `Total: ${posts.length} Post`;
+        adminFeed.innerHTML = '';
+        posts.forEach(post => {
+            const card = document.createElement('div');
+            card.className = 'post-card';
+            card.id = `post-${post.id}`;
+
+            let preview = '<div class="media-preview" style="color:#444">Teks Saja</div>';
+            if (post.linkUrl) {
+                preview = `<div class="media-preview"><iframe src="${post.linkUrl}"></iframe></div>`;
+            } else if (post.mediaUrl) {
+                if (post.mediaType === 'image') preview = `<div class="media-preview"><img src="${post.mediaUrl}"></div>`;
+                else preview = `<div class="media-preview"><video src="${post.mediaUrl}" controls></video></div>`;
+            }
+
+            card.innerHTML = `
+                ${preview}
+                <div class="content">
+                    <span class="user">@${post.username} ${post.isAds ? '<span class="badge">IKLAN</span>' : ''}</span>
+                    <p style="font-size:14px; margin: 10px 0;">${post.status}</p>
+                </div>
+                <button class="btn-delete" onclick="deletePost('${post.id}')">HAPUS</button>
+            `;
+            adminFeed.appendChild(card);
+        });
+    }
+
+    async function postIklan() {
+        const username = document.getElementById('ads-username').value;
+        const status = document.getElementById('ads-status').value;
+        const linkUrl = document.getElementById('ads-link').value;
+
+        if (!linkUrl) return alert("Link URL wajib diisi!");
+
+        const formData = new FormData();
+        formData.append('username', username || 'SPONSOR');
+        formData.append('status', status);
+        formData.append('linkUrl', linkUrl);
+        formData.append('isAds', 'true');
+
+        await fetch('/api/posts', { method: 'POST', body: formData });
+        
+        // Reset Form & Preview
+        document.getElementById('ads-status').value = '';
+        document.getElementById('ads-link').value = '';
+        livePreviewBox.style.display = 'none';
+        alert("Iklan berhasil dipublikasikan!");
+    }
+
+    async function deletePost(id) {
+        if (confirm("Hapus?")) {
+            await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+        }
+    }
+
+    socket.on('post:new', () => loadPosts());
+    socket.on('post:deleted', (id) => {
+        const el = document.getElementById(`post-${id}`);
+        if(el) el.remove();
+        loadPosts();
+    });
+
+    loadPosts();
+</script>
+
+</body>
+</html>

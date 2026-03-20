@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Tonton Live — LiveStream</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#fe2c55;--cyan:#25f4ee;--yellow:#ffd600;
+  --green:#00e676;--purple:#9b59f4;
+  --muted:rgba(255,255,255,.55);--glass:rgba(255,255,255,.1);
+}
+html,body{height:100%;overflow:hidden;background:#000;font-family:'Segoe UI',system-ui,sans-serif;color:#fff}
+
+.screen{display:none;position:fixed;inset:0}
+.screen.active{display:flex}
+
+#discoverScreen{flex-direction:column;background:linear-gradient(160deg,#0d0d14,#14080e);overflow-y:auto}
+.disc-header{
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);position:sticky;top:0;z-index:5;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.btn-refresh{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:#fff;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;gap:5px;min-height:36px;transition:background .2s;
+}
+.btn-refresh:hover{background:rgba(255,255,255,.15)}
+.disc-body{flex:1;padding:18px 14px;display:flex;flex-direction:column;gap:16px}
+.disc-body h2{font-size:20px;font-weight:800}
+.disc-sub{font-size:13px;color:var(--muted);margin-top:-10px}
+.stream-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stream-card{
+  position:relative;border-radius:14px;overflow:hidden;aspect-ratio:9/16;
+  background:#111;cursor:pointer;transition:transform .2s,box-shadow .2s;
+  border:1.5px solid rgba(255,255,255,.08);
+}
+.stream-card:hover{transform:scale(1.03);box-shadow:0 8px 30px rgba(254,44,85,.3);border-color:var(--red)}
+.stream-card:active{transform:scale(.97)}
+.card-thumb{width:100%;height:100%;background:linear-gradient(135deg,#1a0a18,#0a1020);display:flex;align-items:center;justify-content:center}
+.card-grad{position:absolute;bottom:0;left:0;right:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.9),transparent)}
+.card-live{position:absolute;top:8px;left:8px;background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.8px}
+.card-viewers{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px}
+.card-info{position:absolute;bottom:10px;left:10px;right:10px}
+.card-title{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:2px}
+.card-host{font-size:11px;color:rgba(255,255,255,.7)}
+.empty-disc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px 20px;color:var(--muted);text-align:center;grid-column:1/-1}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.hidden{display:none}
+.modal{background:#1a1a26;border-radius:22px 22px 0 0;padding:22px 22px 34px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:16px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:0 auto -4px}
+.modal h3{font-size:17px;font-weight:800;text-align:center}
+.modal .modal-desc{font-size:13px;color:var(--muted);text-align:center;margin-top:-10px}
+.field label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:12px;padding:12px 14px;font-size:15px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--red)}
+.field input::placeholder{color:rgba(255,255,255,.3)}
+.modal-btns{display:flex;gap:9px}
+.btn{flex:1;padding:13px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer;min-height:48px;transition:all .2s}
+.btn-watch{background:var(--red);color:#fff}
+.btn-watch:hover{background:#c9003c}
+.btn-cancel{background:rgba(255,255,255,.08);color:rgba(255,255,255,.75)}
+
+#watchScreen{background:#000;flex-direction:column;align-items:center;justify-content:center}
+.watch-container{position:relative;width:100%;height:100%;max-width:calc(100vh*9/16);overflow:hidden;background:#000}
+#remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000;z-index:0;transition:filter 0.3s ease}
+
+#viewerGrid{
+  position:absolute;inset:0;z-index:1;
+  display:none;gap:2px;background:#111;
+  pointer-events:none;
+}
+#viewerGrid.g1{grid-template-columns:1fr;grid-template-rows:1fr}
+#viewerGrid.g2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+#viewerGrid.g4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+#viewerGrid.g6{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
+#viewerGrid.g9{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr}
+.vg-cell{position:relative;overflow:hidden;background:#0a0a0a;display:flex;align-items:center;justify-content:center}
+.vg-cell video{width:100%;height:100%;object-fit:cover;display:block}
+
+#gridIndicator{
+  position:absolute;top:58px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.72);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.8);font-size:11px;font-weight:700;
+  padding:4px 12px;border-radius:20px;z-index:15;
+  opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;
+}
+#gridIndicator.show{opacity:1}
+
+#coGrid{
+  position:absolute;inset:0;display:none;
+  grid-template-columns:1fr 1fr;grid-template-rows:1fr;gap:2px;background:#111;z-index:4;
+}
+#coGrid.show{display:grid}
+#coGrid video{width:100%;height:100%;object-fit:cover;display:block}
+.co-label{position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px}
+.co-label.me{color:var(--purple)}
+.co-label.host{color:var(--yellow)}
+.co-cell{position:relative}
+
+.w-grad-top{position:absolute;top:0;left:0;right:0;height:150px;background:linear-gradient(to bottom,rgba(0,0,0,.72),transparent);pointer-events:none;z-index:2}
+.w-grad-bottom{position:absolute;bottom:0;left:0;right:0;height:58%;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.4) 50%,transparent 100%);pointer-events:none;z-index:2}
+
+#loadingOverlay{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+#loadingOverlay.hidden{display:none}
+.spinner{width:42px;height:42px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+#playOverlay{position:absolute;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;z-index:15}
+#playOverlay.hidden{display:none}
+
+#endedOverlay{position:absolute;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:25}
+#endedOverlay.hidden{display:none}
+.btn-back-live{background:var(--red);color:#fff;border:none;padding:12px 26px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer}
+
+.w-top-bar{position:absolute;top:0;left:0;right:0;z-index:10;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+.w-top-left{display:flex;align-items:center;gap:9px;min-width:0}
+.host-ava{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--red),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;border:2px solid #fff}
+.w-host-info{display:flex;flex-direction:column;gap:1px;min-width:0}
+.w-host-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-live-badge{background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
+.w-viewer-pill{background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px}
+.btn-close{background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.2);color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+.w-stream-info{position:absolute;bottom:200px;left:12px;right:70px;z-index:10}
+.w-stream-title{font-size:13px;font-weight:700;margin-bottom:2px}
+
+.w-right-bar{position:absolute;right:9px;bottom:200px;z-index:10;display:flex;flex-direction:column;align-items:center;gap:18px}
+.w-action-btn{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.w-action-icon{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:21px}
+.w-action-label{font-size:9px;color:rgba(255,255,255,.8);font-weight:500}
+
+.w-cohost-btn{
+  background:linear-gradient(135deg,var(--purple),#6e3ccf);color:#fff;
+  border:none;border-radius:50%;width:48px;height:48px;
+  display:flex;align-items:center;justify-content:center;font-size:21px;cursor:pointer;
+}
+.w-cohost-btn.active{background:var(--red)}
+
+#cohostControls{
+  position:absolute;bottom:200px;left:9px;z-index:10;
+  display:none;flex-direction:column;gap:10px;
+}
+#cohostControls.show{display:flex}
+.co-ctrl-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);background:rgba(0,0,0,.6);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.co-ctrl-btn.muted{background:var(--red)}
+
+.w-chat-area{
+  position:absolute;bottom:95px;left:0;right:66px;z-index:10;
+  max-height:200px;overflow:hidden;
+}
+.w-chat-scroll{overflow-y:auto;padding:0 12px 4px;display:flex;flex-direction:column;gap:5px}
+.w-msg{background:rgba(0,0,0,.4);backdrop-filter:blur(6px);border-radius:18px;padding:5px 11px;max-width:fit-content;display:inline-flex;gap:4px;align-items:baseline}
+.w-msg .cn{font-size:12px;font-weight:700}
+.w-msg .cn.host{color:var(--yellow)}
+.w-msg .cn.cohost{color:var(--purple)}
+.w-msg .ct{font-size:12px;color:#fff}
+
+.w-chat-bar{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:7px 10px 18px;display:flex;gap:7px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent)}
+.w-chat-input{flex:1;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);color:#fff;border-radius:22px;padding:9px 14px;font-size:13px;outline:none}
+.w-send-btn{width:42px;height:42px;border-radius:50%;border:none;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center}
+
+#cohostPendingBadge{
+  position:fixed;top:10px;left:50%;transform:translateX(-50%);
+  background:var(--purple);color:#fff;font-size:11px;padding:5px 16px;border-radius:20px;z-index:30;display:none;
+}
+#cohostPendingBadge.show{display:block}
+
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);color:#fff;padding:9px 20px;border-radius:22px;font-size:12px;opacity:0;transition:opacity .3s;z-index:999}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="screen active" id="discoverScreen">
+  <div class="disc-header">
+    <div class="logo"><div class="logo-dot"></div>LiveStream</div>
+    <button class="btn-refresh" onclick="loadStreams()">Refresh</button>
+  </div>
+  <div class="disc-body">
+    <h2>🔴 Live Sekarang</h2>
+    <div class="stream-grid" id="streamGrid"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="joinModal">
+  <div class="modal">
+    <h3>Tonton Stream 🎬</h3>
+    <div class="field">
+      <label>Nama kamu</label>
+      <input type="text" id="viewerNameInput" placeholder="Nama..." maxlength="30"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeJoinModal()">Batal</button>
+      <button class="btn btn-watch" onclick="confirmJoin()">Tonton</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="watchScreen">
+  <div class="watch-container">
+    <video id="remoteVideo" autoplay playsinline muted></video>
+    <div id="viewerGrid"></div>
+    <div id="gridIndicator"></div>
+    <div id="coGrid">
+      <div class="co-cell"><video id="coLocalVideo" autoplay playsinline muted></video><div class="co-label me">Saya</div></div>
+      <div class="co-cell"><video id="coRemoteVideo" autoplay playsinline muted></video><div class="co-label host">Host</div></div>
+    </div>
+    <div class="w-grad-top"></div>
+    <div class="w-grad-bottom"></div>
+    <div id="loadingOverlay"><div class="spinner"></div></div>
+    <div id="playOverlay" class="hidden" onclick="forcePlay()">TAP UNTUK SUARA</div>
+    <div id="endedOverlay" class="hidden"><h3>Stream Berakhir</h3><button class="btn-back-live" onclick="backToDiscover()">Kembali</button></div>
+    <div id="cohostPendingBadge">⏳ Menunggu izin host...</div>
+    <div class="w-top-bar">
+      <div class="w-top-left">
+        <div class="host-ava" id="watchHostAva">H</div>
+        <div class="w-host-info"><div class="w-host-name" id="watchHostName">—</div><div class="w-live-badge">● LIVE</div></div>
+      </div>
+      <div style="display:flex;gap:7px"><div class="w-viewer-pill">👁 <span id="watchViewers">0</span></div><button class="btn-close" onclick="backToDiscover()">✕</button></div>
+    </div>
+    <div class="w-stream-info"><div class="w-stream-title" id="watchTitle">—</div></div>
+    <div id="cohostControls">
+      <button class="co-ctrl-btn" id="coMicBtn" onclick="toggleCoMic()">🎙️</button>
+      <button class="co-ctrl-btn" id="coCamBtn" onclick="toggleCoCam()">📷</button>
+      <button class="co-ctrl-btn" onclick="leaveCohost()">✕</button>
+    </div>
+    <div class="w-right-bar">
+      <div class="w-action-btn"><div class="w-action-icon" onclick="sendHeart()">❤️</div><span class="w-action-label" id="heartCount">0</span></div>
+      <button class="w-cohost-btn" id="cohostJoinBtn" onclick="requestCohost()">🎙</button>
+    </div>
+    <div class="w-chat-area"><div class="w-chat-scroll" id="wChatScroll"></div></div>
+    <div class="w-chat-bar">
+      <input type="text" class="w-chat-input" id="wChatInput" placeholder="Tulis pesan..." onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="w-send-btn" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const socket = io();
+let currentStreamId = null, myName = 'Penonton', hostSocketId = null;
+let pc = null, cohostPC = null, localCohostStream = null;
+let isCohost = false, cohostPending = false, cohostMicOn = true, cohostCamOn = true;
+
+const ICE = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' }
+  ],
+  sdpSemantics: 'unified-plan',
+  iceCandidatePoolSize: 10
+};
+
+function loadStreams(){ socket.emit('get:streams'); }
+
+socket.on('streams:list', (list) => {
+  const grid = document.getElementById('streamGrid');
+  grid.innerHTML = list.length ? '' : '<p>Belum ada live</p>';
+  list.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'stream-card';
+    card.innerHTML = `<div class="card-thumb">🎬</div><div class="card-grad"></div><div class="card-live">LIVE</div><div class="card-viewers">👁 ${s.viewerCount}</div><div class="card-info"><div class="card-title">${s.title}</div><div class="card-host">@${s.hostName}</div></div>`;
+    card.onclick = () => openJoinModal(s);
+    grid.appendChild(card);
+  });
+});
+
+let pendingStream = null;
+function openJoinModal(s){ pendingStream=s; document.getElementById('joinModal').classList.remove('hidden'); }
+function closeJoinModal(){ document.getElementById('joinModal').classList.add('hidden'); }
+function confirmJoin(){
+  const n = document.getElementById('viewerNameInput').value.trim();
+  if(!n) return; myName=n; joinStream(pendingStream); closeJoinModal();
+}
+
+function joinStream(s){
+  currentStreamId = s.streamId;
+  document.getElementById('watchTitle').textContent = s.title;
+  document.getElementById('watchHostName').textContent = s.hostName;
+  document.getElementById('watchViewers').textContent = s.viewerCount;
+  showScreen('watchScreen');
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  socket.emit('viewer:join', { streamId: currentStreamId, viewerName: myName });
+}
+
+socket.on('rtc:offer', async ({ from, offer, label }) => {
+  if (label === 'viewer') {
+    hostSocketId = from;
+    pc = new RTCPeerConnection(ICE);
+    pc.ontrack = e => { 
+        document.getElementById('remoteVideo').srcObject = e.streams[0];
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('playOverlay').classList.remove('hidden');
+    };
+    pc.onicecandidate = e => { if(e.candidate) socket.emit('rtc:ice', { targetId: from, candidate: e.candidate, label: 'viewer' }); };
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('rtc:answer', { targetId: from, answer: pc.localDescription, label: 'viewer' });
+  } else if (label === 'cohost') {
+    cohostPC = new RTCPeerConnection(ICE);
+    if(localCohostStream) localCohostStream.getTracks().forEach(t => cohostPC.addTrack(t, localCohostStream));
+    cohostPC.ontrack = e => { document.getElementById('coRemoteVideo').srcObject = e.streams[0]; };
+    cohostPC.onicecandidate = e => { if(e.candidate) socket.emit('rtc:ice', { targetId: from, candidate: e.candidate, label: 'cohost' }); };
+    await cohostPC.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await cohostPC.createAnswer();
+    await cohostPC.setLocalDescription(answer);
+    socket.emit('rtc:answer', { targetId: from, answer: cohostPC.localDescription, label: 'cohost' });
+  }
+});
+
+socket.on('rtc:ice', async ({ candidate, label }) => {
+  try {
+    const targetPC = (label === 'cohost') ? cohostPC : pc;
+    if (targetPC) await targetPC.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch(e){}
+});
+
+// --- LOGIKA EFEK KAMERA (SYNC) ---
+socket.on('effect:change', ({ effect }) => {
+  const filter = getFilterCSS(effect);
+  document.getElementById('remoteVideo').style.filter = filter;
+  document.getElementById('coRemoteVideo').style.filter = filter;
+});
+
+function getFilterCSS(eff) {
+  switch(eff) {
+    case 'sharp': return 'contrast(1.2) brightness(1.1) saturate(1.1)';
+    case 'beauty': return 'brightness(1.15) saturate(1.1) contrast(0.95)';
+    case 'vintage': return 'sepia(0.4) contrast(1.2)';
+    case 'bw': return 'grayscale(1)';
+    case 'warm': return 'sepia(0.2) saturate(1.5)';
+    case 'cool': return 'hue-rotate(180deg) saturate(0.8)';
+    case 'invert': return 'invert(1)';
+    default: return 'none';
+  }
+}
+
+async function requestCohost(){
+  if(isCohost) return;
+  try {
+    localCohostStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById('coLocalVideo').srcObject = localCohostStream;
+    cohostPending = true;
+    document.getElementById('cohostPendingBadge').classList.add('show');
+    socket.emit('cohost:request', { streamId: currentStreamId });
+  } catch(e){ showToast('Izin kamera ditolak'); }
+}
+
+socket.on('cohost:accepted', () => {
+  isCohost = true; cohostPending = false;
+  document.getElementById('cohostPendingBadge').classList.remove('show');
+  document.getElementById('coGrid').classList.add('show');
+  document.getElementById('cohostControls').classList.add('show');
+  showToast('Co-host aktif!');
+});
+
+socket.on('cohost:kicked', () => {
+  leaveCohost(); showToast('Dikeluarkan oleh host');
+});
+
+function leaveCohost(){
+  if(localCohostStream) localCohostStream.getTracks().forEach(t => t.stop());
+  if(cohostPC) cohostPC.close();
+  isCohost = false;
+  document.getElementById('coGrid').classList.remove('show');
+  document.getElementById('cohostControls').classList.remove('show');
+}
+
+function forcePlay(){
+  const v = document.getElementById('remoteVideo');
+  v.muted = false; v.play();
+  document.getElementById('playOverlay').classList.add('hidden');
+}
+
+function sendChat(){
+  const input = document.getElementById('wChatInput');
+  const msg = input.value.trim();
+  if(!msg) return;
+  socket.emit('chat:send', { streamId: currentStreamId, message: msg, name: myName, role: isCohost?'cohost':'viewer' });
+  input.value = '';
+}
+
+socket.on('chat:message', (data) => {
+  const scroll = document.getElementById('wChatScroll');
+  const div = document.createElement('div');
+  div.className = 'w-msg';
+  div.innerHTML = `<span class="cn ${data.role}">${data.name}</span><span class="ct">${data.message}</span>`;
+  scroll.appendChild(div);
+  scroll.scrollTop = scroll.scrollHeight;
+});
+
+socket.on('grid:change', ({ gridMode }) => {
+    const grid = document.getElementById('viewerGrid');
+    const remote = document.getElementById('remoteVideo');
+    if(gridMode === 1) {
+        grid.style.display = 'none';
+        remote.style.display = 'block';
+    } else {
+        grid.style.display = 'grid';
+        grid.className = 'g' + gridMode;
+        remote.style.display = 'none';
+        // Logika pengisian grid penonton di sini jika diperlukan
+    }
+});
+
+socket.on('stream:ended', () => {
+  document.getElementById('endedOverlay').classList.remove('hidden');
+});
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showToast(m){
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function backToDiscover(){ location.reload(); }
+function sendHeart(){
+    const count = document.getElementById('heartCount');
+    count.textContent = parseInt(count.textContent) + 1;
+}
+
+loadStreams();
+</script>
+</body>
+</html>
