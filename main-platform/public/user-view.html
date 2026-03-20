@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil Pengguna - Lombok Streaming</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { margin: 0; padding-bottom: 20px; background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-bar { background: white; padding: 15px; display: flex; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .back-btn { font-size: 20px; color: #1c1e21; cursor: pointer; }
+        
+        .profile-card { background: white; text-align: center; padding: 20px 20px 30px 20px; border-radius: 0 0 20px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .profile-pic { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #1877f2; object-fit: cover; margin-bottom: 10px; }
+        
+        .stats-container { display: flex; justify-content: center; gap: 40px; margin: 15px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .stat-item { text-align: center; cursor: pointer; }
+        .stat-num { display: block; font-weight: bold; font-size: 18px; color: #1c1e21; }
+        .stat-label { color: #65676b; font-size: 12px; }
+
+        .btn-follow { background: #1877f2; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; width: 100%; max-width: 300px; cursor: pointer; }
+        .btn-unfollow { background: #e4e6eb; color: #050505; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; width: 100%; max-width: 300px; cursor: pointer; }
+        
+        /* Modal List Pengikut Full Screen */
+        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background: white; overflow-y: auto; }
+        .modal-header { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; }
+        .close-modal { font-size: 24px; color: #1c1e21; cursor: pointer; margin-right: 20px; }
+        .user-item { display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
+        .user-item img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
+        .user-item b { font-size: 15px; color: #1c1e21; }
+
+        .content-area { padding: 15px; }
+        .card { background: white; margin-bottom: 15px; border-radius: 8px; padding: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .post-media { width: 100%; border-radius: 8px; margin-top: 10px; }
+        .post-actions { display: flex; border-top: 1px solid #eee; margin-top: 10px; padding-top: 5px; }
+        .action-btn { flex: 1; text-align: center; padding: 8px; cursor: pointer; color: #65676b; font-weight: bold; font-size: 14px; }
+        .active-like { color: #1877f2; }
+
+        .comment-section { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; display: none; }
+        .comment-item { margin-bottom: 8px; background: #f0f2f5; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
+        .reply-item { margin-left: 25px; margin-top: 5px; border-left: 2px solid #ddd; padding-left: 10px; }
+        .reply-link { font-size: 11px; color: #1877f2; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 20px; outline: none; box-sizing: border-box; }
+        .btn-blue { background: #1877f2; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <i class="fas fa-arrow-left back-btn" onclick="location.href='/'"></i>
+        <b id="topName">Profil</b>
+    </div>
+
+    <div class="profile-card">
+        <img id="userPic" src="/uploads/default.png" class="profile-pic">
+        <h2 id="userName" style="margin: 5px 0;">Memuat...</h2>
+        <p id="userBio" style="color: #65676b; margin-bottom: 15px;">Sedang memuat bio...</p>
+        
+        <div class="stats-container">
+            <div class="stat-item" onclick="showFollowers()">
+                <span class="stat-num" id="countFollowers">0</span>
+                <span class="stat-label">Pengikut</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num" id="countPosts">0</span>
+                <span class="stat-label">Postingan</span>
+            </div>
+        </div>
+
+        <div id="followArea">
+            <button class="btn-follow" id="followBtn" onclick="toggleFollow()">Ikuti</button>
+        </div>
+    </div>
+
+    <div id="followModal" class="modal">
+        <div class="modal-header">
+            <i class="fas fa-times close-modal" onclick="closeFollowers()"></i>
+            <b style="font-size: 18px;">Pengikut</b>
+        </div>
+        <div id="followerList"></div>
+    </div>
+
+    <div class="content-area">
+        <h4 id="postTitle">Postingan Pengguna</h4>
+        <div id="userPosts"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        const pathArray = window.location.pathname.split('/');
+        const targetUserId = pathArray[pathArray.length - 1];
+        let currentUserId = "";
+        let currentUserName = "";
+        let targetFollowers = [];
+
+        async function loadProfile() {
+            const meRes = await fetch('/api/my-data');
+            const me = await meRes.json();
+            currentUserId = me._id;
+            currentUserName = me.fullName || me.username;
+
+            if(currentUserId === targetUserId) {
+                document.getElementById('followArea').style.display = 'none';
+                document.getElementById('postTitle').innerText = "Postingan Saya";
+            }
+
+            const res = await fetch(`/api/user-profile/${targetUserId}`);
+            const user = await res.json();
+
+            document.getElementById('topName').innerText = user.fullName || user.username;
+            document.getElementById('userName').innerText = user.fullName || user.username;
+            document.getElementById('userPic').src = user.profilePic || '/uploads/default.png';
+            document.getElementById('userBio').innerText = user.bio || 'Tidak ada bio.';
+            
+            targetFollowers = user.followers || [];
+            document.getElementById('countFollowers').innerText = targetFollowers.length;
+            
+            const btn = document.getElementById('followBtn');
+            if(targetFollowers.includes(currentUserId)) {
+                btn.innerText = "Mengikuti";
+                btn.className = "btn-unfollow";
+            }
+
+            loadUserPosts();
+        }
+
+        async function loadUserPosts() {
+            const res = await fetch('/api/posts');
+            const allPosts = await res.json();
+            const filtered = allPosts.filter(p => p.userId === targetUserId);
+            
+            document.getElementById('countPosts').innerText = filtered.length;
+            const container = document.getElementById('userPosts');
+            
+            if(filtered.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:gray;">Belum ada postingan.</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(p => {
+                const isLiked = p.likes.includes(currentUserId);
+                return `
+                <div class="card" id="post-${p._id}">
+                    <div style="font-size:12px; color:gray; margin-bottom:8px;">${new Date(p.createdAt).toLocaleString()}</div>
+                    <div>${p.content}</div>
+                    ${p.media ? (p.mediaType === 'video' ? `<video src="${p.media}" class="post-media" controls></video>` : `<img src="${p.media}" class="post-media">`) : ''}
+                    
+                    <div class="post-actions">
+                        <div class="action-btn ${isLiked ? 'active-like' : ''}" onclick="likePost('${p._id}')">
+                            <i class="fas fa-thumbs-up"></i> Suka (${p.likes.length})
+                        </div>
+                        <div class="action-btn" onclick="toggleComments('${p._id}')">
+                            <i class="fas fa-comment"></i> Komentar (${p.comments ? p.comments.length : 0})
+                        </div>
+                    </div>
+
+                    <div class="comment-section" id="box-${p._id}">
+                        <div id="list-${p._id}">${renderComments(p.comments || [], p._id)}</div>
+                        <div style="display:flex; gap:5px; margin-top:10px;">
+                            <input type="text" id="input-${p._id}" placeholder="Tulis komentar...">
+                            <button class="btn-blue" onclick="sendComment('${p._id}')">Kirim</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function showFollowers() {
+            const modal = document.getElementById('followModal');
+            const list = document.getElementById('followerList');
+            modal.style.display = 'block';
+            list.innerHTML = '<p style="text-align:center; padding:20px; color:gray;">Memuat pengikut...</p>';
+            
+            try {
+                // Fetch data detail pengikut
+                const detailRes = await fetch(`/api/user-profile/${targetUserId}`);
+                const data = await detailRes.json();
+                const ids = data.followers || [];
+
+                if(ids.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; padding:20px; color:gray;">Belum ada pengikut.</p>';
+                    return;
+                }
+
+                // Ambil data user satu per satu untuk menampilkan Nama & Foto
+                let html = "";
+                for(let id of ids) {
+                    const uRes = await fetch(`/api/user-profile/${id}`);
+                    const u = await uRes.json();
+                    html += `
+                        <div class="user-item" onclick="location.href='/user/${u._id}'">
+                            <img src="${u.profilePic || '/uploads/default.png'}">
+                            <b>${u.fullName || u.username}</b>
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+            } catch(e) {
+                list.innerHTML = '<p style="text-align:center; padding:20px; color:red;">Gagal memuat data.</p>';
+            }
+        }
+
+        function closeFollowers() {
+            document.getElementById('followModal').style.display = 'none';
+        }
+
+        function renderComments(comments, postId) {
+            return comments.map(c => `
+                <div class="comment-item">
+                    <b>${c.from}:</b> ${c.text}
+                    <span class="reply-link" onclick="setupReply('${postId}', '${c.from}')">Balas</span>
+                    ${c.replies ? c.replies.map(r => `<div class="comment-item reply-item"><b>${r.from}:</b> ${r.text}</div>`).join('') : ''}
+                </div>
+            `).join('');
+        }
+
+        function toggleComments(postId) {
+            const box = document.getElementById(`box-${postId}`);
+            box.style.display = box.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function setupReply(postId, target) {
+            const input = document.getElementById(`input-${postId}`);
+            input.value = `@${target} `;
+            input.focus();
+        }
+
+        function likePost(postId) { socket.emit('like-post', { postId, userId: currentUserId, fullName: currentUserName }); }
+        
+        function sendComment(postId) {
+            const input = document.getElementById(`input-${postId}`);
+            if(!input.value) return;
+            socket.emit('new-comment', { postId, from: currentUserName, userId: currentUserId, text: input.value });
+            input.value = "";
+        }
+
+        async function toggleFollow() {
+            const res = await fetch(`/api/follow/${targetUserId}`, { method: 'POST' });
+            location.reload();
+        }
+
+        socket.on('update-post', () => loadUserPosts());
+        socket.on('update-comments', (data) => {
+            const list = document.getElementById(`list-${data.postId}`);
+            if(list) list.innerHTML = renderComments(data.comments, data.postId);
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profil Saya - LOMBOK STREAMING</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding-bottom: 80px; }
+        .profile-header { background: white; padding: 30px 20px; text-align: center; border-bottom: 1px solid #ddd; }
+        .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #1877f2; margin-bottom: 10px; }
+        .stats-bar { display: flex; justify-content: center; gap: 30px; margin: 15px 0; font-size: 14px; color: #65676B; }
+        .stats-bar b { color: black; display: block; font-size: 18px; }
+        
+        .content-grid { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
+        .post-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .post-media { width: 100%; display: block; background: #000; max-height: 400px; object-fit: contain; }
+        .post-details { padding: 12px; }
+        .post-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; color: #65676B; font-size: 13px; }
+        .meta-item { display: flex; align-items: center; gap: 5px; }
+        
+        .btn-edit { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 80%; max-width: 300px; }
+        .btn-delete { color: #ff4d4d; cursor: pointer; border: none; background: none; }
+        .nav-bottom { position: fixed; bottom: 0; width: 100%; display: flex; justify-content: space-around; padding: 15px 0; background: white; border-top: 1px solid #ddd; z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <div class="profile-header">
+        <img id="myPic" class="profile-pic" src="/uploads/default.png">
+        <h2 id="myName" style="margin:5px 0;">Memuat...</h2>
+        <p id="myBio" style="color:#65676B; font-size:14px; margin-bottom:15px;">Halo, selamat datang di profil saya!</p>
+        
+        <div class="stats-bar">
+            <div><b id="countPost">0</b>Postingan</div>
+            <div><b id="countLikes">0</b>Total Suka</div>
+        </div>
+        
+        <button class="btn-edit" onclick="location.href='/edit-profile'">Edit Profil</button>
+        <button onclick="location.href='/logout'" style="border:none; background:none; color:#e41e3f; margin-left:10px; font-weight:bold;">Keluar</button>
+    </div>
+
+    <div class="content-grid" id="myContent">
+        </div>
+
+    <div class="nav-bottom">
+        <a href="/" style="color:#65676B;"><i class="fa fa-home fa-lg"></i></a>
+        <a href="/reels.html" style="color:#65676B;"><i class="fa fa-clapperboard fa-lg"></i></a>
+        <a href="/profile" style="color:#1877f2;"><i class="fa fa-user fa-lg"></i></a>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // 1. Ambil data profil saya
+        fetch('/api/my-data').then(res => res.json()).then(user => {
+            document.getElementById('myPic').src = user.profilePic || '/uploads/default.png';
+            document.getElementById('myName').innerText = user.fullName;
+            if(user.bio) document.getElementById('myBio').innerText = user.bio;
+        });
+
+        // 2. Ambil semua konten milik saya
+        fetch('/api/my-posts').then(res => res.json()).then(data => {
+            const container = document.getElementById('myContent');
+            document.getElementById('countPost').innerText = data.length;
+            
+            let totalLikes = 0;
+            
+            container.innerHTML = data.map(p => {
+                totalLikes += p.likes.length;
+                let mediaHtml = '';
+                
+                if(p.media) {
+                    mediaHtml = p.mediaType === 'video' 
+                        ? `<video src="${p.media}" class="post-media" controls></video>` 
+                        : `<img src="${p.media}" class="post-media">`;
+                }
+
+                return `
+                    <div class="post-card" id="post-${p._id}">
+                        <div class="post-details">
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="font-size:12px; color:#65676B;">${new Date(p.createdAt).toLocaleDateString()}</span>
+                                <button class="btn-delete" onclick="deletePost('${p._id}')"><i class="fa fa-trash"></i></button>
+                            </div>
+                            <p style="margin:10px 0;">${p.content}</p>
+                        </div>
+                        ${mediaHtml}
+                        <div class="post-meta">
+                            <div class="meta-item"><i class="fa fa-heart" style="color:#ff4d4d;"></i> ${p.likes.length} Suka</div>
+                            <div class="meta-item"><i class="fa fa-comment"></i> ${p.comments.length} Komentar</div>
+                            <div class="meta-item"><i class="fa fa-eye"></i> ${p.views || 0} Tayangan</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('countLikes').innerText = totalLikes;
+        });
+
+        function deletePost(id) {
+            if(confirm('Hapus postingan ini?')) {
+                fetch('/api/delete-post/' + id, { method: 'DELETE' })
+                .then(() => {
+                    document.getElementById('post-' + id).remove();
+                });
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reels - LOMBOK STREAMING</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
+        .reels-container { height: 100vh; overflow-y: scroll; snap-type: y mandatory; scrollbar-width: none; }
+        .reels-container::-webkit-scrollbar { display: none; }
+        .reel-unit { height: 100vh; width: 100%; snap-align: start; position: relative; display: flex; align-items: center; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(transparent, rgba(0,0,0,0.8)); pointer-events: none; }
+        .reel-info { position: absolute; bottom: 90px; left: 15px; right: 70px; z-index: 10; }
+        .user-section { display: flex; align-items: center; margin-bottom: 10px; cursor: pointer; width: fit-content; }
+        .user-section img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; margin-right: 10px; object-fit: cover; }
+        .side-actions { position: absolute; bottom: 120px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 25px; z-index: 11; }
+        .action-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .action-item i { font-size: 30px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .action-item span { font-size: 12px; font-weight: bold; margin-top: 5px; }
+        
+        #commentModal { display: none; position: fixed; bottom: 0; width: 100%; height: 60%; background: white; color: black; border-radius: 20px 20px 0 0; z-index: 100; padding: 20px; box-sizing: border-box; }
+        .nav-bottom { position: fixed; bottom: 0; width: 100%; display: flex; justify-content: space-around; padding: 15px 0; background: rgba(0,0,0,0.9); z-index: 20; }
+    </style>
+</head>
+<body>
+
+    <div class="reels-container" id="reelsFeed"></div>
+
+    <div id="commentModal">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <b>Komentar</b>
+            <i class="fa fa-times" onclick="closeComments()"></i>
+        </div>
+        <div id="activeComments" style="height:80%; overflow-y:auto;"></div>
+        <div style="display:flex; border-top:1px solid #ddd; padding-top:10px;">
+            <input type="text" id="commentText" placeholder="Tulis komentar..." style="flex:1; padding:10px; border-radius:20px; border:1px solid #ddd;">
+            <button id="sendBtn" style="border:none; background:none; color:#1877f2; font-weight:bold; margin-left:10px;">Kirim</button>
+        </div>
+    </div>
+
+    <div class="nav-bottom">
+        <a href="/"><i class="fa fa-home fa-lg" style="color:white; opacity:0.6;"></i></a>
+        <a href="/reels"><i class="fa fa-clapperboard fa-lg" style="color:#1877f2;"></i></a>
+        <a href="/profile"><i class="fa fa-user fa-lg" style="color:white; opacity:0.6;"></i></a>
+    </div>
+
+    <script>
+        const socket = io();
+        let myId = "";
+
+        // Mengambil ID User yang sedang login
+        fetch('/api/my-data').then(res => res.json()).then(user => {
+            myId = user._id;
+        });
+
+        socket.on('load-reels', (reels) => {
+            const feed = document.getElementById('reelsFeed');
+            feed.innerHTML = reels.map(r => {
+                // LOGIKA NAVIGASI: Jika pemilik video adalah saya, buka /profile. Jika orang lain, buka /user/id
+                const targetPath = (r.userId === myId) ? '/profile' : `/user/${r.userId}`;
+                
+                return `
+                <div class="reel-unit">
+                    <video src="${r.media}" loop playsinline onclick="this.paused ? this.play() : this.pause()"></video>
+                    <div class="overlay"></div>
+                    <div class="reel-info">
+                        <div class="user-section" onclick="location.href='${targetPath}'">
+                            <img src="${r.profilePic || '/uploads/default.png'}">
+                            <b>${r.fullName}</b>
+                        </div>
+                        <p>${r.content}</p>
+                    </div>
+                    <div class="side-actions">
+                        <div class="action-item" onclick="socket.emit('like-post', '${r._id}')">
+                            <i class="fa fa-heart"></i>
+                            <span id="like-count-${r._id}">${r.likes.length}</span>
+                        </div>
+                        <div class="action-item" onclick="openComments('${r._id}')">
+                            <i class="fa fa-comment"></i>
+                            <span>${r.comments.length}</span>
+                        </div>
+                        <div class="action-item" onclick="shareReel('${r._id}')">
+                            <i class="fa fa-paper-plane"></i>
+                            <span>Bagi</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        });
+
+        function openComments(id) {
+            document.getElementById('commentModal').style.display = 'block';
+            // Logika ambil komentar...
+        }
+
+        function closeComments() {
+            document.getElementById('commentModal').style.display = 'none';
+        }
+
+        function shareReel(id) {
+            navigator.clipboard.writeText(window.location.origin + '/reels?id=' + id);
+            alert('Link disalin!');
+        }
+    </script>
+</body>
+</html>

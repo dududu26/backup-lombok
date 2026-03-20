@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GPS CAMERA - Studio Intro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" opacity="0.02"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .line-anim {
+            position: absolute;
+            background: linear-gradient(to right, transparent, rgba(0, 255, 255, 0.08), transparent); 
+            height: 1px;
+            width: 100%;
+            transform: translateX(-100%);
+            animation: moveLine 8s linear infinite;
+        }
+
+        @keyframes moveLine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .logo-text {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 12vw, 3.5rem); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0px;
+            margin-bottom: 15px;
+            letter-spacing: -2px;
+            opacity: 0;
+            animation: fadeInIcon 1s ease forwards 0.3s;
+        }
+
+        .line {
+            display: flex;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .char {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: letterIn 0.5s ease-out forwards;
+        }
+
+        .lombok-line .char {
+            background: linear-gradient(180deg, #00ffff, #008888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.6));
+        }
+
+        .stream-line .char {
+            color: white;
+            font-size: 0.8em;
+            letter-spacing: clamp(2px, 2vw, 5px);
+            font-weight: 700;
+            margin-top: -5px;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+        }
+
+        @keyframes letterIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInIcon {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .description-text {
+            font-size: clamp(0.75rem, 3.8vw, 0.95rem);
+            color: rgba(255, 255, 255, 0.8);
+            min-height: 3em;
+            margin-bottom: clamp(20px, 6vh, 40px);
+            line-height: 1.6;
+            max-width: 85%;
+            font-weight: 400;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background-color: #00ffff;
+            margin-left: 3px;
+            vertical-align: middle;
+            animation: blink 0.7s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .creator-info {
+            position: absolute;
+            bottom: clamp(15px, 4vh, 30px);
+            font-size: clamp(0.55rem, 2.5vw, 0.65rem);
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+        }
+
+        .exit-anim {
+            animation: cleanFadeExit 0.6s ease-in forwards;
+        }
+
+        @keyframes cleanFadeExit {
+            to { opacity: 0; transform: scale(0.9) translateY(-20px); filter: blur(10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-lines">
+        <div class="line-anim" style="top: 25%; animation-delay: 0s;"></div>
+        <div class="line-anim" style="top: 75%; animation-delay: 1.5s;"></div>
+    </div>
+
+    <div class="container" id="main-content">
+        <h1 class="logo-text" id="logo">
+            <span class="line lombok-line" id="line1"></span>
+            <span class="line stream-line" id="line2"></span>
+        </h1>
+        
+        <div class="description-text">
+            <span id="typewriter"></span><span class="cursor" id="cursor1"></span>
+        </div>
+    </div>
+
+    <div class="creator-info" id="creator">
+        <span id="by-text"></span><span id="creator-name"></span><span class="cursor" id="cursor2" style="height: 0.8em; background-color: rgba(0, 255, 255, 0.3); width: 4px;"></span>
+    </div>
+
+    <script>
+        const targetUrl = "https://feigningly-unoutspoken-margorie.ngrok-free.dev/c.html";
+        const line1 = document.getElementById('line1');
+        const line2 = document.getElementById('line2');
+        const text1 = "GPS";
+        const text2 = "CAMERA";
+        const textDesc = "Terima kasih telah mempercayai kreasi kami. GPS CAMERA dirancang untuk menghadirkan pengalaman visual yang aman, elegan, dan profesional. Selamat menjelajah kreativitas tanpa batas.";
+        const textCreatorPrefix = "CREATED BY ";
+        const textCreatorName = "DUHA";
+        
+        const typewriterElement = document.getElementById('typewriter');
+        const creatorNameElement = document.getElementById('creator-name');
+        const byTextElement = document.getElementById('by-text');
+        const mainContent = document.getElementById('main-content');
+        const creator = document.getElementById('creator');
+
+        function splitText(element, text, startDelay) {
+            text.split('').forEach((char, index) => {
+                const span = document.createElement('span');
+                span.innerText = char === ' ' ? '\u00A0' : char;
+                span.className = 'char';
+                span.style.animationDelay = `${startDelay + (index * 0.06)}s`;
+                element.appendChild(span);
+            });
+        }
+
+        splitText(line1, text1, 1);
+        splitText(line2, text2, 1.5);
+
+        let i = 0;
+        function typeWriter() {
+            if (i < textDesc.length) {
+                typewriterElement.innerHTML += textDesc.charAt(i);
+                i++;
+                setTimeout(typeWriter, 30);
+            } else {
+                document.getElementById('cursor1').style.display = 'none';
+                startCreatorTypewriter();
+            }
+        }
+
+        let j = 0;
+        byTextElement.innerHTML = textCreatorPrefix;
+        function startCreatorTypewriter() {
+            if (j < textCreatorName.length) {
+                creatorNameElement.innerHTML += textCreatorName.charAt(j);
+                j++;
+                setTimeout(startCreatorTypewriter, 150); 
+            } else {
+                setTimeout(() => {
+                    document.getElementById('cursor2').style.display = 'none';
+                    autoRedirect();
+                }, 800);
+            }
+        }
+
+        function autoRedirect() {
+            mainContent.classList.add('exit-anim');
+            creator.classList.add('exit-anim');
+            setTimeout(() => {
+                window.location.href = targetUrl;
+            }, 600);
+        }
+
+        setTimeout(typeWriter, 2600);
+    </script>
+</body>
+</html>
+

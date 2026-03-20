@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOM_BoX Island  - Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+body { margin: 0; padding-bottom: 70px; background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+.tab-content { display: none; padding: 15px; animation: fadeIn 0.3s; }
+.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .navbar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #ddd; z-index: 1000; }
+    .nav-item { text-align: center; color: #65676b; font-size: 22px; flex: 1; cursor: pointer; transition: 0.2s; position: relative; }
+    .nav-item.active-nav { color: #1877f2; }
+
+    /* Badge Notifikasi Merah */
+    .badge { position: absolute; top: -5px; right: 20%; background: #fa3e3e; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; display: none; border: 2px solid white; font-weight: bold; }
+
+    /* Create Post Trigger Box */
+    .create-post-trigger { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .create-post-trigger .fake-input { background: #f0f2f5; padding: 10px 15px; border-radius: 20px; flex: 1; color: #65676b; }
+
+    /* Modal Post Baru */
+    .post-modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background: white; overflow-y: auto; }
+    .post-modal-content { padding: 15px; }
+    
+    /* Background Options */
+    .bg-selector { display: flex; gap: 8px; margin: 15px 0; overflow-x: auto; padding-bottom: 5px; }
+    .bg-option { min-width: 35px; height: 35px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+    .bg-option.selected { border-color: #1877f2; }
+    
+    /* Area Ketik dengan Background */
+    .writing-area { width: 100%; border-radius: 12px; transition: 0.3s; padding: 20px; box-sizing: border-box; min-height: 200px; display: flex; align-items: center; justify-content: center; text-align: center; }
+    .writing-area textarea { background: transparent; border: none; width: 100%; font-size: 22px; font-weight: bold; color: inherit; text-align: center; resize: none; min-height: 150px; }
+    .writing-area textarea:focus { outline: none; }
+    .writing-area textarea::placeholder { color: rgba(0,0,0,0.3); }
+
+    .media-preview { width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; }
+    
+    .fab { position: fixed; bottom: 85px; right: 20px; background: #1877f2; color: white; width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); cursor: pointer; z-index: 999; }
+
+    .card { background: white; margin-bottom: 12px; border-radius: 8px; padding: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: 0.3s; border: 2px solid transparent; position: relative; overflow: hidden; }
+    .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer; }
+    .post-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .post-media { width: 100%; border-radius: 8px; margin-top: 10px; }
+    
+    /* Card dengan Background Warna */
+    .card-bg-content { margin: -15px -15px 10px -15px; padding: 40px 20px; text-align: center; font-size: 20px; font-weight: bold; min-height: 150px; display: flex; align-items: center; justify-content: center; }
+
+    .delete-btn { position: absolute; top: 15px; right: 15px; color: #ced0d4; cursor: pointer; font-size: 18px; transition: 0.2s; z-index: 5; }
+    .delete-btn:hover { color: #f02849; }
+
+    .post-actions { display: flex; border-top: 1px solid #eee; margin-top: 10px; padding-top: 5px; }
+    .action-btn { flex: 1; text-align: center; padding: 8px; cursor: pointer; color: #65676b; font-weight: bold; font-size: 14px; }
+    .active-like { color: #1877f2; }
+
+    .comment-section { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; display: none; }
+    .comment-item { margin-bottom: 8px; background: #f0f2f5; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
+    .reply-link { font-size: 11px; color: #1877f2; cursor: pointer; font-weight: bold; margin-left: 5px; }
+
+    .profile-header { text-align: center; background: white; padding: 20px; border-radius: 0 0 15px 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .profile-pic { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #1877f2; object-fit: cover; }
+    .edit-section { background: white; margin-top: 15px; padding: 15px; border-radius: 10px; display: none; }
+    .edit-section.show { display: block; }
+    
+    input, textarea, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    .btn-blue { background: #1877f2; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .btn-gray { background: #e4e6eb; color: #050505; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    .btn-live { background: #f02849; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; display: none; }
+    .btn-live:disabled { background: #ccc; cursor: not-allowed; }
+
+    .notif-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; background: white; }
+    .notif-item:active { background: #e4e6eb; }
+    .notif-unread { background: #e7f3ff !important; border-left: 4px solid #1877f2; }
+    .notif-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; }
+    .notif-follow { background: #1877f2; }
+    .notif-like { background: #fa3e3e; }
+    .notif-comment { background: #2ecc71; }
+    .notif-live { background: #f02849; }
+    
+    .highlight-post { border: 2px solid #1877f2 !important; box-shadow: 0 0 15px rgba(24, 119, 242, 0.4) !important; transform: scale(1.02); z-index: 10; }
+    .follower-stat { margin-top: 10px; font-weight: bold; color: #1877f2; cursor: pointer; text-decoration: underline; }
+
+    .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: white; overflow-y: auto; animation: slideUp 0.3s; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-header { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 10; }
+    .modal-header h3 { margin: 0; flex: 1; text-align: center; }
+    .close-modal { font-size: 24px; cursor: pointer; color: #65676b; }
+    .follower-item { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; }
+    .follower-item:active { background: #f0f2f5; }
+    .follower-item img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+    .follower-info { flex: 1; }
+    .follower-info b { display: block; font-size: 16px; }
+
+    .alert-modal { display: none; position: fixed; z-index: 4000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .alert-box { background: white; width: 85%; max-width: 320px; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .alert-box i { font-size: 40px; color: #f02849; margin-bottom: 15px; }
+    .alert-box h4 { margin: 0 0 10px 0; }
+    .alert-box p { color: #65676b; font-size: 14px; margin-bottom: 20px; }
+</style>
+
+</head>
+<body>
+<div class="fab" onclick="openPostModal()"><i class="fas fa-plus"></i></div>
+
+<div id="home" class="tab-content active">
+    <h3 style="color: #1877f2;">LOM_BoX Island </h3>
+    
+    <div class="create-post-trigger" onclick="openPostModal()">
+        <img id="triggerPic" src="/uploads/default.png" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+        <div class="fake-input">Apa yang Anda pikirkan?</div>
+    </div>
+
+    <div id="postList"></div>
+</div>
+
+<div id="postModal" class="post-modal">
+    <div class="modal-header">
+        <i class="fas fa-times close-modal" onclick="closePostModal()"></i>
+        <h3>Buat Postingan</h3>
+        <button type="button" class="btn-blue" style="width:auto; padding:5px 20px;" onclick="submitPost()">Posting</button>
+    </div>
+    <div class="post-modal-content">
+        <form id="postForm" action="/api/post" method="POST" enctype="multipart/form-data">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                <img id="modalUserPic" src="/uploads/default.png" style="width:45px; height:45px; border-radius:50%; object-fit:cover;">
+                <div>
+                    <b id="modalUserName">User</b><br>
+                    <select name="isReel" id="postType" style="margin:0; padding:2px; font-size:12px; width:auto; border:none; background:#e4e6eb;" onchange="validateReelSelection()">
+                        <option value="false">Publik</option>
+                        <option value="true">Reels</option>
+                    </select>
+                </div>
+            </div>
+
+            <input type="hidden" name="bgColor" id="bgColorInput" value="transparent">
+
+            <div id="writingArea" class="writing-area" style="background: transparent;">
+                <textarea name="content" id="postContent" placeholder="Apa yang Anda pikirkan?" required oninput="handleTextArea(this)"></textarea>
+            </div>
+
+            <img id="previewImg" class="media-preview">
+            <video id="previewVid" class="media-preview" controls></video>
+
+            <div class="bg-selector" id="bgSelectors">
+                <div class="bg-option selected" style="background:#f0f2f5; border:1px solid #ddd;" onclick="setBg('transparent', this)"></div>
+                <div class="bg-option" style="background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);" onclick="setBg('linear-gradient(45deg, #f093fb 0%, #f5576c 100%)', this, 'white')"></div>
+                <div class="bg-option" style="background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);" onclick="setBg('linear-gradient(to right, #4facfe 0%, #00f2fe 100%)', this, 'white')"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" onclick="setBg('linear-gradient(135deg, #667eea 0%, #764ba2 100%)', this, 'white')"></div>
+                <div class="bg-option" style="background: #1c1e21;" onclick="setBg('#1c1e21', this, 'white')"></div>
+                <div class="bg-option" style="background: #ff4757;" onclick="setBg('#ff4757', this, 'white')"></div>
+                <div class="bg-option" style="background: #2ed573;" onclick="setBg('#2ed573', this, 'white')"></div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <label style="background:#e4e6eb; padding:12px; border-radius:8px; cursor:pointer; text-align:center; font-weight:bold;">
+                    <i class="fas fa-image" style="color:#45bd62"></i> Tambahkan Foto/Video
+                    <input type="file" id="fileInput" name="media" accept="image/*,video/*" style="display:none" onchange="previewMedia(this)">
+                </label>
+                <button id="btnLiveAction" type="button" class="btn-live" onclick="checkLiveRequirement()"><i class="fas fa-broadcast-tower"></i> Mulai Live</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="reels" class="tab-content">
+    <h3><i class="fas fa-play-circle"></i> Reels</h3>
+    <div id="reelsList"></div>
+</div>
+
+<div id="notif" class="tab-content">
+    <h3>Pemberitahuan</h3>
+    <div id="notifList"></div>
+</div>
+
+<div id="profile" class="tab-content">
+    <div class="profile-header">
+        <img id="myPic" src="/uploads/default.png" class="profile-pic">
+        <h2 id="myName">Memuat...</h2>
+        <p id="myBio" style="color: #65676b;"></p>
+        <div id="followerCountDisplay" class="follower-stat" onclick="openFollowerModal()">0 Pengikut</div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn-gray" onclick="toggleEdit()"><i class="fas fa-edit"></i> Edit Profil</button>
+            <button class="btn-gray" style="background: #f02849; color: white;" onclick="location.href='/logout'"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </div>
+    <div id="editArea" class="edit-section">
+        <h4>Update Informasi</h4>
+        <form action="/api/update-profile" method="POST" enctype="multipart/form-data">
+            <label>Foto Profil Baru:</label>
+            <input type="file" name="photo" accept="image/*">
+            <input type="text" name="fullName" id="editName" placeholder="Nama Lengkap">
+            <textarea name="bio" id="editBio" placeholder="Ceritakan tentang Anda..."></textarea>
+            <select name="gender">
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+            </select>
+            <button type="submit" class="btn-blue">Simpan Perubahan</button>
+        </form>
+    </div>
+    <h4 style="margin-top: 20px;">Postingan Saya</h4>
+    <div id="myPosts"></div>
+</div>
+
+<div id="followerModal" class="modal">
+    <div class="modal-header">
+        <i class="fas fa-arrow-left close-modal" onclick="closeFollowerModal()"></i>
+        <h3>Daftar Pengikut</h3>
+        <div style="width: 24px;"></div>
+    </div>
+    <div id="followerListContent"></div>
+</div>
+
+<div id="alertModal" class="alert-modal">
+    <div class="alert-box">
+        <i id="alertIcon" class="fas fa-lock"></i>
+        <h4 id="alertTitle">Akses Dibatasi</h4>
+        <p id="alertMsg">Anda memerlukan minimal 1 pengikut untuk memulai siaran langsung.</p>
+        <button class="btn-blue" onclick="closeAlert()">Oke, Mengerti</button>
+    </div>
+</div>
+
+<div class="navbar">
+    <div class="nav-item active-nav" onclick="showTab('home', this)"><i class="fas fa-home"></i></div>
+    <div class="nav-item" onclick="location.href='[https://uncomplaining-aniya-zygophyllaceous.ngrok-free.dev/watch.html](https://uncomplaining-aniya-zygophyllaceous.ngrok-free.dev/watch.html)'"><i class="fas fa-tv"></i></div>
+    <div class="nav-item" onclick="showTab('reels', this)"><i class="fas fa-play-circle"></i></div>
+    <div class="nav-item" onclick="showTab('notif', this)">
+        <i class="fas fa-bell"></i>
+        <span id="notifBadge" class="badge">0</span>
+    </div>
+    <div class="nav-item" onclick="showTab('profile', this)"><i class="fas fa-user-circle"></i></div>
+</div>
+
+<script>
+    const socket = io();
+    let currentUserId = "";
+    let currentUserName = "";
+    let unreadNotifCount = 0;
+    let myFollowersData = [];
+    let totalFollowers = 0;
+
+    // MODAL POST LOGIC
+    function openPostModal() {
+        document.getElementById('postModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        document.getElementById('postContent').focus();
+    }
+
+    function closePostModal() {
+        document.getElementById('postModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('postForm').reset();
+        setBg('transparent', document.querySelector('.bg-option'));
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('previewVid').style.display = 'none';
+        document.getElementById('bgSelectors').style.display = 'flex';
+    }
+
+    function setBg(color, el, textColor = 'black') {
+        const area = document.getElementById('writingArea');
+        const input = document.getElementById('bgColorInput');
+        const textarea = document.getElementById('postContent');
+        
+        area.style.background = color;
+        input.value = color;
+        textarea.style.color = textColor;
+
+        document.querySelectorAll('.bg-option').forEach(opt => opt.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function handleTextArea(el) {
+        if(document.getElementById('bgColorInput').value === 'transparent') {
+            el.style.fontSize = '18px';
+            el.style.textAlign = 'left';
+        } else {
+            el.style.fontSize = '22px';
+            el.style.textAlign = 'center';
+        }
+    }
+
+    function validateReelSelection() {
+        const type = document.getElementById('postType').value;
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (type === 'true') {
+            document.getElementById('bgSelectors').style.display = 'none';
+            setBg('transparent', document.querySelector('.bg-option'));
+            
+            if (file && !file.type.startsWith('video/')) {
+                showAlert("Format Salah", "Pilihan Reels hanya mendukung format video.", "fa-video");
+                fileInput.value = ""; 
+                document.getElementById('previewImg').style.display = 'none';
+            }
+        } else {
+            document.getElementById('bgSelectors').style.display = 'flex';
+        }
+    }
+
+    function submitPost() {
+        const content = document.getElementById('postContent').value;
+        const type = document.getElementById('postType').value;
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (type === 'true') {
+            if (!file || !file.type.startsWith('video/')) {
+                showAlert("Gagal Posting", "Anda wajib mengunggah video untuk memposting ke Reels.", "fa-exclamation-triangle");
+                return;
+            }
+        }
+
+        if(!content && !file) return;
+        document.getElementById('postForm').submit();
+    }
+
+    function previewMedia(input) {
+        const img = document.getElementById('previewImg');
+        const vid = document.getElementById('previewVid');
+        const type = document.getElementById('postType').value;
+        
+        img.style.display = 'none'; vid.style.display = 'none';
+        
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            if (type === 'true' && !file.type.startsWith('video/')) {
+                showAlert("Bukan Video", "Reels hanya menerima file video. Silakan ganti file atau ubah jenis postingan.", "fa-video");
+                input.value = "";
+                return;
+            }
+
+            setBg('transparent', document.querySelector('.bg-option'));
+            document.getElementById('bgSelectors').style.display = 'none';
+
+            const url = URL.createObjectURL(file);
+            if (file.type.startsWith('image/')) { 
+                img.src = url; 
+                img.style.display = 'block'; 
+            }
+            else if (file.type.startsWith('video/')) { 
+                vid.src = url; 
+                vid.style.display = 'block'; 
+            }
+        }
+    }
+
+    function showAlert(title, msg, iconClass = "fa-lock") {
+        document.getElementById('alertTitle').innerText = title;
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertIcon').className = `fas ${iconClass}`;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+
+    function showTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav'));
+        document.getElementById(tabId).classList.add('active');
+        if(el) el.classList.add('active-nav');
+        
+        if(tabId === 'home') loadAllPosts(); 
+        if(tabId === 'notif') {
+            loadNotif();
+            clearBadge();
+        }
+        if(tabId === 'profile') loadMyData();
+    }
+
+    function clearBadge() {
+        unreadNotifCount = 0;
+        const badge = document.getElementById('notifBadge');
+        badge.innerText = "0";
+        badge.style.display = "none";
+        socket.emit('mark-notif-read', currentUserId);
+    }
+
+    function toggleEdit() { document.getElementById('editArea').classList.toggle('show'); }
+
+    async function loadMyData() {
+        const res = await fetch('/api/my-data');
+        const user = await res.json();
+        currentUserId = user._id;
+        currentUserName = user.fullName || user.username;
+        myFollowersData = user.followersData || []; 
+        
+        socket.emit('join-room', currentUserId);
+
+        document.getElementById('myPic').src = user.profilePic || '/uploads/default.png';
+        document.getElementById('myName').innerText = currentUserName;
+        document.getElementById('myBio').innerText = user.bio || 'Belum ada bio.';
+        
+        document.getElementById('triggerPic').src = user.profilePic || '/uploads/default.png';
+        document.getElementById('modalUserPic').src = user.profilePic || '/uploads/default.png';
+        document.getElementById('modalUserName').innerText = currentUserName;
+
+        document.getElementById('editName').value = user.fullName || '';
+        document.getElementById('editBio').value = user.bio || '';
+
+        totalFollowers = user.followers ? user.followers.length : 0;
+        document.getElementById('followerCountDisplay').innerText = totalFollowers + " Pengikut";
+
+        const btnLive = document.getElementById('btnLiveAction');
+        btnLive.style.display = 'block';
+        
+        if (totalFollowers >= 1) {
+            btnLive.disabled = false;
+            btnLive.style.opacity = '1';
+        } else {
+            btnLive.disabled = false; 
+            btnLive.style.opacity = '0.7';
+        }
+    }
+
+    function checkLiveRequirement() {
+        if (totalFollowers >= 1) {
+            socket.emit('start-live-notification', {
+                userId: currentUserId,
+                userName: currentUserName
+            });
+            setTimeout(() => {
+                location.href = '[https://uncomplaining-aniya-zygophyllaceous.ngrok-free.dev/host.html](https://uncomplaining-aniya-zygophyllaceous.ngrok-free.dev/host.html)';
+            }, 500);
+        } else {
+            showAlert("Akses Dibatasi", "Anda memerlukan minimal 1 pengikut untuk memulai siaran langsung.");
+        }
+    }
+
+    function closeAlert() {
+        document.getElementById('alertModal').style.display = 'none';
+    }
+
+    // FUNGSI UTAMA UNTUK MENAMPILKAN PENGIKUT DAN LINK KE PROFIL
+    function openFollowerModal() {
+        const content = document.getElementById('followerListContent');
+        if (!myFollowersData || myFollowersData.length === 0) {
+            content.innerHTML = '<p style="text-align:center; margin-top:50px; color:gray;">Belum ada pengikut.</p>';
+        } else {
+            content.innerHTML = myFollowersData.map(f => `
+                <div class="follower-item" onclick="location.href='/user/${f._id}'">
+                    <img src="${f.profilePic || '/uploads/default.png'}">
+                    <div class="follower-info">
+                        <b>${f.fullName || f.username}</b>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:#ddd"></i>
+                </div>
+            `).join('');
+        }
+        document.getElementById('followerModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeFollowerModal() {
+        document.getElementById('followerModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    async function loadAllPosts() {
+        const res = await fetch('/api/posts');
+        const posts = await res.json();
+        renderPosts(posts, 'postList');
+        renderPosts(posts.filter(p => p.isReel), 'reelsList');
+        renderPosts(posts.filter(p => p.userId === currentUserId), 'myPosts');
+    }
+
+    function renderPosts(posts, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (posts.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:gray;">Tidak ada postingan.</p>';
+            return;
+        }
+        container.innerHTML = posts.map(p => {
+            const isLiked = p.likes.includes(currentUserId);
+            const isMyPost = p.userId === currentUserId;
+            const hasBg = p.bgColor && p.bgColor !== 'transparent';
+            
+            return `
+            <div class="card" id="post-${p._id}">
+                ${isMyPost ? `<div class="delete-btn" onclick="deletePost('${p._id}')"><i class="fas fa-trash-alt"></i></div>` : ''}
+                <div class="post-header" onclick="location.href='/user/${p.userId}'">
+                    <img src="${p.profilePic || '/uploads/default.png'}">
+                    <div><b>${p.fullName || 'User'}</b><br><small>${new Date(p.createdAt).toLocaleString()}</small></div>
+                </div>
+
+                ${hasBg ? 
+                    `<div class="card-bg-content" style="background:${p.bgColor}; color:white;">${p.content}</div>` : 
+                    `<div style="padding: 5px 0;">${p.content}</div>`
+                }
+
+                ${p.media ? (p.mediaType === 'video' ? `<video src="${p.media}" class="post-media" controls></video>` : `<img src="${p.media}" class="post-media">`) : ''}
+                
+                <div class="post-actions">
+                    <div class="action-btn ${isLiked ? 'active-like' : ''}" onclick="likePost('${p._id}')">
+                        <i class="fas fa-thumbs-up"></i> Suka (${p.likes.length})
+                    </div>
+                    <div class="action-btn" onclick="toggleComments('${p._id}')">
+                        <i class="fas fa-comment"></i> Komentar (${p.comments ? p.comments.length : 0})
+                    </div>
+                </div>
+
+                <div class="comment-section" id="box-${p._id}">
+                    <div id="list-${p._id}">${renderComments(p.comments || [], p._id)}</div>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <input type="text" id="input-${p._id}" placeholder="Tulis komentar..." style="margin:0">
+                        <button class="btn-blue" onclick="sendComment('${p._id}')" style="width:auto; padding:5px 15px;">Kirim</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderComments(comments, postId) {
+        return comments.map(c => `
+            <div class="comment-item">
+                <b>${c.from}:</b> ${c.text}
+                <span class="reply-link" onclick="setupReply('${postId}', '${c.from}')">Balas</span>
+            </div>
+        `).join('');
+    }
+
+    function toggleComments(postId) {
+        const box = document.getElementById(`box-${postId}`);
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function setupReply(postId, target) {
+        const input = document.getElementById(`input-${postId}`);
+        input.value = `@${target} `;
+        input.focus();
+    }
+
+    function likePost(postId) { socket.emit('like-post', { postId, userId: currentUserId, fullName: currentUserName }); }
+    
+    function sendComment(postId) {
+        const input = document.getElementById(`input-${postId}`);
+        if(!input.value) return;
+        socket.emit('new-comment', { postId, from: currentUserName, userId: currentUserId, text: input.value });
+        input.value = "";
+    }
+
+    function deletePost(postId) {
+        if(confirm("Apakah Anda yakin ingin menghapus postingan ini?")) {
+            socket.emit('delete-post', { postId, userId: currentUserId });
+        }
+    }
+
+    socket.on('update-post', () => loadAllPosts());
+    socket.on('update-comments', (data) => {
+        const list = document.getElementById(`list-${data.postId}`);
+        if(list) list.innerHTML = renderComments(data.comments, data.postId);
+    });
+
+    socket.on('notification-received', (doc) => {
+        unreadNotifCount++;
+        const badge = document.getElementById('notifBadge');
+        badge.innerText = unreadNotifCount;
+        badge.style.display = "block";
+    });
+
+    async function loadNotif() {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        const list = document.getElementById('notifList');
+        if(data.length === 0) {
+            list.innerHTML = '<p style="text-align:center; padding:20px; color:gray;">Belum ada pemberitahuan.</p>';
+            return;
+        }
+        list.innerHTML = data.map((n, index) => {
+            let text = ""; let icon = ""; let bg = "";
+            if(n.type === 'follow') { text = "mulai mengikuti Anda."; icon = "fa-user-plus"; bg = "notif-follow"; } 
+            else if(n.type === 'like') { text = "menyukai postingan Anda."; icon = "fa-thumbs-up"; bg = "notif-like"; } 
+            else if(n.type === 'comment') { text = "mengomentari postingan Anda."; icon = "fa-comment"; bg = "notif-comment"; }
+            else if(n.type === 'live') { text = "sedang melakukan Siaran Langsung sekarang!"; icon = "fa-broadcast-tower"; bg = "notif-live"; }
+
+            const clickAction = n.postId ? `goToPost('${n.postId}')` : (n.type === 'live' ? `location.href='https://uncomplaining-aniya-zygophyllaceous.ngrok-free.dev/watch.html'` : `location.href='/user/${n.fromId}'`);
+            const unreadClass = (n.isRead === false) ? 'notif-unread' : '';
+
+            return `
+            <div class="notif-item ${unreadClass}" onclick="${clickAction}">
+                <div class="notif-icon ${bg}"><i class="fas ${icon}"></i></div>
+                <div>
+                    <b>${n.from}</b> ${text}<br>
+                    <small style="color:gray;">${new Date(n.date).toLocaleString()}</small>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function goToPost(postId) {
+        showTab('home', document.querySelector('.fa-home').parentElement);
+        setTimeout(() => {
+            const postElement = document.getElementById(`post-${postId}`);
+            if(postElement) {
+                postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                postElement.classList.add('highlight-post');
+                setTimeout(() => postElement.classList.remove('highlight-post'), 3000);
+            }
+        }, 500);
+    }
+
+    loadMyData().then(() => loadAllPosts());
+</script>
+
+</body>
+</html>
+
